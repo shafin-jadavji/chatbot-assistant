@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Message from "./Message";
 import InputBox from "./InputBox";
 import { sendMessageToChatbot } from "../services/api";
@@ -8,6 +8,7 @@ const ChatWindow = () => {
         { text: "Hello! How can I assist you today?", sender: "bot" }
     ]);
     const [loading, setLoading] = useState(false); // New state for loading indicator
+    const messagesEndRef = useRef(null); // Ref to track the end of the messages container
 
     const sendMessage = async (text) => {
         const newMessages = [...messages, { text, sender: "user" }];
@@ -24,6 +25,13 @@ const ChatWindow = () => {
         setLoading(false); // Hide loading indicator
     };
 
+    // Effect to scroll to the bottom of the messages container when messages change
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
+
     return (
         <div className="chat-window">
             <div className="messages">
@@ -31,6 +39,7 @@ const ChatWindow = () => {
                     <Message key={index} text={msg.text} sender={msg.sender} />
                 ))}
                 {loading && <div className="loading-message">🤖 Typing...</div>} {/* Loading indicator */}
+                <div ref={messagesEndRef} /> {/* Dummy div to track the end of the messages */}
             </div>
             <InputBox sendMessage={sendMessage} />
         </div>
