@@ -66,3 +66,15 @@ body {
     border-radius: 5px;
     cursor: pointer;
 }
+
+.loading-message {
+    font-style: italic;
+    color: gray;
+    padding: 10px;
+    text-align: left;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0.5; }
+}
