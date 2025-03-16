@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.chat import router as chat_router
 from utils.logging_config import setup_logging
 import logging
 
@@ -9,6 +8,11 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 logger.info("Starting Chatbot API application")
+
+# Import services explicitly to initialize them at startup
+logger.info("Importing service modules...")
+from routes.chat import router as chat_router
+from services import entity_service, intent_service, langchain_service
 
 app = FastAPI()
 
