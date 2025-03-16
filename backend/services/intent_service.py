@@ -1,33 +1,33 @@
 from transformers import pipeline
 
-# Load a lightweight model for intent classification
-intent_classifier = pipeline("text-classification", model="distilbert-base-uncased")
+# Load a pre-trained transformer model for intent classification
+intent_classifier = pipeline("text-classification", model="facebook/bart-large-mnli")
 
-# Define known intent categories
+# Known intents
 INTENT_LABELS = {
-    "weather": ["what's the weather", "how is the weather", "temperature in"],
-    "news": ["latest news", "update on", "tell me news"],
-    "casual": ["how are you", "tell me a joke", "who are you"]
+    "weather": ["weather", "temperature", "forecast"],
+    "news": ["news", "update"],
+    "casual": ["joke", "who are you"]
 }
 
 def detect_intent(user_message):
     """
-    Classifies user intent using a transformer model.
+    Uses transformer model to classify user intent.
     """
-    prediction = intent_classifier(user_message)
-    label = prediction[0]["label"].lower()
+    prediction = intent_classifier(user_message)[0]
+    label = prediction["label"].lower()
 
-    # Match predefined intent categories
-    for key, phrases in INTENT_LABELS.items():
-        if any(phrase in user_message.lower() for phrase in phrases):
+    # Match detected label to predefined intents
+    for key, keywords in INTENT_LABELS.items():
+        if any(word in user_message.lower() for word in keywords):
             return key
-
-    return "general"  # Default intent
+    return "general"  # Default category
 
 # --- TEST FUNCTION ---
 def test_intent_detection():
     test_messages = [
         "What's the weather in Phoenix?",  # Should detect as "weather"
+        "Whats the temperature?",  # Should detect as "weather"
         "Tell me the latest news!",  # Should detect as "news"
         "Who are you?",  # Should detect as "casual"
         "I love programming!",  # Should detect as "general"
