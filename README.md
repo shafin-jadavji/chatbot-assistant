@@ -63,17 +63,19 @@ The primary goal of this project is to create a chatbot-based personal assistant
 |   |-- __init__.py
 |   |-- app.py
 |   |-- config.py
-|   |-- database
-|   |-- models
 |   |-- requirements.txt
 |   |-- routes
 |   |   |-- __init__.py
 |   |   `-- chat.py
 |   |-- services
 |   |   |-- __init__.py
-|   |   `-- openai_service.py
-|   |-- tests
-|   `-- websocket
+|   |   |-- entity_service.py
+|   |   |-- intent_service.py
+|   |   |-- langchain_service.py
+|   |   `-- weather_service.py
+|   `-- utils
+|       |-- __init__.py
+|       `-- logging_config.py
 |-- docker-compose.yml
 |-- frontend
 |   |-- README.md
