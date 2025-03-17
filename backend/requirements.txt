@@ -36,6 +36,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mdurl==0.1.2
 mpmath==1.3.0
+msgpack==1.1.0
 murmurhash==1.0.12
 networkx==3.4.2
 numpy==2.2.3
