@@ -4,8 +4,9 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from utils.logging_config import get_logger
 
-from services.intent_service import detect_intent
+from services.intent_service import detect_intent, detect_news_category, extract_news_query
 from services.entity_service import extract_entities
+from services.news_service import get_news
 
 # Get logger for this module
 logger = get_logger(__name__)
@@ -36,12 +37,35 @@ def handle_weather_request(entities):
     logger.warning("Weather request received but no location entity found")
     return "I need a location to fetch weather details."
 
-def handle_news_request():
+def handle_news_request(user_message):
     """
-    Handles news-related queries.
+    Handles news-related queries by detecting category and query.
+    
+    Args:
+        user_message (str): The user's input message
+        
+    Returns:
+        str: News response
     """
     logger.info("News request received")
-    return "Fetching the latest news updates..."
+    
+    # Extract category and query from the message
+    category = detect_news_category(user_message)
+    query = extract_news_query(user_message)
+    
+    logger.info(f"News request with category: {category}, query: {query}")
+    
+    # Get news based on category and query
+    news_response = get_news(category=category, query=query)
+    
+    return news_response
+
+def handle_stocks_request(entities):
+    """
+    Placeholder for future stocks-related queries.
+    """
+    logger.info("Stocks request received - functionality not yet implemented")
+    return "I'll be able to provide stock information in a future update."
 
 def chat_with_memory(user_message):
     """
@@ -57,14 +81,18 @@ def chat_with_memory(user_message):
     # Log extracted details
     logger.info(f"Detected intent: {intent}, Extracted entities: {entities}")
 
-    # Intent-based routing
+    # Intent-based routing to avoid unnecessary OpenAI calls
     if intent == "weather":
         logger.debug("Routing to weather handler")
         return handle_weather_request(entities)
     
     if intent == "news":
         logger.debug("Routing to news handler")
-        return handle_news_request()
+        return handle_news_request(user_message)
+        
+    if intent == "stocks":
+        logger.debug("Routing to stocks handler")
+        return handle_stocks_request(entities)
 
     # Append user message to conversation history
     conversation_history.append(HumanMessage(content=user_message))

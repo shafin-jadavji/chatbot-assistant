@@ -21,14 +21,26 @@ except Exception as e:
     logger.error(f"Failed to load intent classification model: {str(e)}")
     raise
 
-# Known intents
+# Known intents with expanded keywords
 INTENT_LABELS = {
-    "weather": ["weather", "temperature", "forecast"],
-    "news": ["news", "update"],
-    "casual": ["joke", "who are you"]
+    "weather": ["weather", "temperature", "forecast", "rain", "sunny", "climate", "humidity"],
+    "news": ["news", "headlines", "latest", "update", "current events", "breaking", "article", "report"],
+    "casual": ["joke", "who are you", "hello", "hi", "how are you", "your name"],
+    "stocks": ["stock", "market", "investment", "share", "price", "ticker", "nasdaq", "dow", "s&p"]
+}
+
+# News categories for more specific news intent detection
+NEWS_CATEGORIES = {
+    "business": ["business", "economy", "economic", "finance", "financial", "market", "company", "companies"],
+    "technology": ["technology", "tech", "digital", "software", "hardware", "ai", "artificial intelligence", "computer"],
+    "health": ["health", "medical", "medicine", "disease", "healthcare", "doctor", "hospital", "covid", "pandemic"],
+    "science": ["science", "scientific", "research", "discovery", "space", "physics", "biology", "chemistry"],
+    "sports": ["sports", "sport", "game", "match", "tournament", "player", "team", "football", "basketball", "baseball", "soccer"],
+    "entertainment": ["entertainment", "movie", "film", "music", "celebrity", "actor", "actress", "hollywood", "tv", "television"]
 }
 
 logger.debug(f"Configured intent labels: {INTENT_LABELS}")
+logger.debug(f"Configured news categories: {NEWS_CATEGORIES}")
 
 def detect_intent(user_message):
     """
@@ -48,9 +60,12 @@ def detect_intent(user_message):
         score = prediction["score"]
         logger.debug(f"Raw model prediction: {label} (score: {score:.4f})")
         
+        # Convert message to lowercase for case-insensitive matching
+        message_lower = user_message.lower()
+        
         # Match detected label to predefined intents
         for key, keywords in INTENT_LABELS.items():
-            if any(word in user_message.lower() for word in keywords):
+            if any(word in message_lower for word in keywords):
                 logger.info(f"Detected intent '{key}' based on keywords in message")
                 return key
                 
@@ -62,6 +77,56 @@ def detect_intent(user_message):
         logger.warning("Falling back to 'general' intent due to error")
         return "general"  # Default in case of error
 
+def detect_news_category(user_message):
+    """
+    Detects specific news category from user message
+    
+    Args:
+        user_message (str): The user's input message
+        
+    Returns:
+        str or None: Detected news category or None if not found
+    """
+    message_lower = user_message.lower()
+    
+    for category, keywords in NEWS_CATEGORIES.items():
+        if any(keyword in message_lower for keyword in keywords):
+            logger.info(f"Detected news category: {category}")
+            return category
+            
+    logger.info("No specific news category detected")
+    return None
+
+def extract_news_query(user_message):
+    """
+    Extracts potential search query from news request
+    
+    Args:
+        user_message (str): The user's input message
+        
+    Returns:
+        str or None: Extracted query or None
+    """
+    # Simple extraction based on common patterns
+    message_lower = user_message.lower()
+    
+    query_indicators = [
+        "about", "on", "regarding", "related to", "search for", 
+        "find", "look up", "tell me about"
+    ]
+    
+    for indicator in query_indicators:
+        if indicator in message_lower:
+            # Extract text after the indicator
+            parts = message_lower.split(indicator, 1)
+            if len(parts) > 1 and parts[1].strip():
+                query = parts[1].strip()
+                logger.info(f"Extracted news query: '{query}'")
+                return query
+                
+    logger.info("No specific news query detected")
+    return None
+
 # --- TEST FUNCTION ---
 def test_intent_detection():
     logger.info("Starting intent detection test")
@@ -69,19 +134,27 @@ def test_intent_detection():
         "What's the weather in Phoenix?",  # Should detect as "weather"
         "Whats the temperature?",  # Should detect as "weather"
         "Tell me the latest news!",  # Should detect as "news"
+        "What's happening in technology news?",  # Should detect as "news" with category "technology"
+        "Show me news about climate change",  # Should detect as "news" with query "climate change"
         "Who are you?",  # Should detect as "casual"
-        "I love programming!"  # Should detect as "general"
+        "I love programming!",  # Should detect as "general"
+        "What's the stock price of Apple?",  # Should detect as "stocks"
+        "Tell me about business news",  # Should detect as "news" with category "business"
     ]
 
     for i, message in enumerate(test_messages):
         logger.info(f"Test {i+1}/{len(test_messages)}: Processing '{message}'")
         intent = detect_intent(message)
         logger.info(f"Message: '{message}' -> Intent: '{intent}'")
+        
+        if intent == "news":
+            category = detect_news_category(message)
+            query = extract_news_query(message)
+            logger.info(f"  News category: {category}, Query: {query}")
     
     logger.info("Intent detection test completed")
 
 if __name__ == "__main__":
-  
     from utils.logging_config import setup_logging
     setup_logging(logging.DEBUG)
     test_intent_detection()
