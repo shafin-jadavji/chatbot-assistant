@@ -43,20 +43,33 @@ body {
     color: black;
     align-self: flex-start;
 }
+  .input-box {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      align-items: flex-end;
+  }
 
-.input-box {
-    display: flex;
-    padding: 10px;
-    border-top: 1px solid #ccc;
-}
+  .input-textarea {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      resize: none;
+      font-family: Arial, sans-serif;
+      min-height: 20px;
+      max-height: 100px;
+      overflow-y: auto;
+  }
 
-.input-box input {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    border-radius: 5px;
-}
-
+  /* 
+  .input-box input {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+  }
+  */
 .input-box button {
     margin-left: 5px;
     padding: 8px;
