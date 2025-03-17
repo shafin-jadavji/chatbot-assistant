@@ -7,6 +7,7 @@ from utils.logging_config import get_logger
 from services.intent_service import detect_intent, detect_news_category, extract_news_query
 from services.entity_service import extract_entities
 from services.news_service import get_news
+from services.weather_service import get_weather
 
 # Get logger for this module
 logger = get_logger(__name__)
@@ -33,9 +34,15 @@ def handle_weather_request(entities):
     if location:
         location_str = location[0] if location else "unknown location"
         logger.info(f"Weather request for location: {location_str}")
-        return f"Fetching weather information for {location_str}..."
-    logger.warning("Weather request received but no location entity found")
-    return "I need a location to fetch weather details."
+        # return f"Fetching weather information for {location_str}..."
+
+        # Fetch weather data using the weather service
+        weather_response = get_weather(location_str)
+        logger.info(f"Weather response: {weather_response}")
+        return weather_response
+    else:
+        logger.warning("Weather request received but no location entity found")
+        return "I need a location to fetch weather details."
 
 def handle_news_request(user_message):
     """
