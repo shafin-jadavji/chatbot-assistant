@@ -51,15 +51,17 @@ body {
   }
 
   .input-textarea {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 5px;
-      resize: none;
-      font-family: Arial, sans-serif;
-      min-height: 20px;
-      max-height: 100px;
-      overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 5px;
+    resize: none;
+    font-family: Arial, sans-serif;
+    min-height: 60px; /* Initial height for 3 lines */
+    max-height: 100px; /* Maximum height for about 5 lines */
+    overflow-y: auto; /* Add scrollbar when content exceeds max-height */
+    line-height: 1.2; /* Consistent line height */
+    box-sizing: border-box;
   }
 
   /* 
@@ -78,8 +80,9 @@ body {
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    align-self: flex-end;
+    height: 36px; /* Fixed height to align with textarea */
 }
-
 .loading-message {
     font-style: italic;
     color: gray;
