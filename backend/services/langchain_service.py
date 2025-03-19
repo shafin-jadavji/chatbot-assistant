@@ -97,7 +97,7 @@ def chat_with_memory(user_message):
     
     # Extract intent and entities
     intent = detect_intent(user_message)
-    entities = extract_entities(user_message)
+    entities = extract_entities(user_message, intent=intent)  # Pass the intent to extract_entities
 
     # Log extracted details
     logger.info(f"Detected intent: {intent}, Extracted entities: {entities}")
