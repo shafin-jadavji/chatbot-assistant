@@ -155,34 +155,6 @@ def detect_temperature_unit(user_message):
     logger.debug("No specific temperature unit detected in message")
     return None
 
-def detect_temperature_unit(user_message):
-    """
-    Detects if the user has specified a temperature unit preference.
-    
-    Args:
-        user_message (str): The user's input message
-        
-    Returns:
-        str: "metric" for Celsius, "imperial" for Fahrenheit, or None if not specified
-    """
-    message_lower = user_message.lower()
-    
-    # Check for Celsius indicators
-    celsius_indicators = ["celsius", "centigrade", "°c", " c ", "degrees c"]
-    if any(indicator in message_lower for indicator in celsius_indicators):
-        logger.info("Detected temperature unit preference: Celsius")
-        return "metric"
-        
-    # Check for Fahrenheit indicators
-    fahrenheit_indicators = ["fahrenheit", "°f", " f ", "degrees f"]
-    if any(indicator in message_lower for indicator in fahrenheit_indicators):
-        logger.info("Detected temperature unit preference: Fahrenheit")
-        return "imperial"
-        
-    # Default case - no specific unit mentioned
-    logger.debug("No specific temperature unit detected in message")
-    return None
-
 # --- TEST FUNCTION ---
 def test_intent_detection():
     logger.info("Starting intent detection test")
