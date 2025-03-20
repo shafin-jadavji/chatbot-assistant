@@ -63,14 +63,26 @@ def detect_intent(user_message):
         # Convert message to lowercase for case-insensitive matching
         message_lower = user_message.lower()
         
-        # Match detected label to predefined intents
-        for key, keywords in INTENT_LABELS.items():
-            if any(word in message_lower for word in keywords):
-                logger.info(f"Detected intent '{key}' based on keywords in message")
-                return key
-                
-        logger.info(f"No specific intent detected, defaulting to 'general'")
-        return "general"  # Default category
+        # Special case for stock market indices
+        if any(index in message_lower for index in ["nasdaq", "dow", "s&p"]):
+            logger.info(f"Detected intent 'stocks' based on market index keywords")
+            return "stocks"
+        
+        # Check for intent keywords in the message
+        for intent, keywords in INTENT_LABELS.items():
+            for keyword in keywords:
+                # For multi-word keywords (phrases)
+                if " " in keyword and keyword in message_lower:
+                    logger.info(f"Detected intent '{intent}' based on phrase '{keyword}'")
+                    return intent
+                # For single-word keywords, use simpler contains check
+                elif keyword in message_lower.split():
+                    logger.info(f"Detected intent '{intent}' based on keyword '{keyword}'")
+                    return intent
+        
+        # If no intent was matched, return "general"
+        logger.info("No specific intent detected, defaulting to 'general'")
+        return "general"
     
     except Exception as e:
         logger.error(f"Error detecting intent: {str(e)}", exc_info=True)
