@@ -17,6 +17,7 @@
 |   |   |-- news_service.py
 |   |   `-- weather_service.py
 |   |-- tests
+|   |   |-- test_app.py
 |   |   `-- test_chat.py
 |   `-- utils
 |       |-- __init__.py
@@ -47,4 +48,4 @@
 |   `-- vite.config.js
 `-- tree.txt
 
-11 directories, 36 files
+11 directories, 37 files
