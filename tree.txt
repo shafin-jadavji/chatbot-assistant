@@ -14,7 +14,10 @@
 |   |   |-- entity_service.py
 |   |   |-- intent_service.py
 |   |   |-- langchain_service.py
+|   |   |-- news_service.py
 |   |   `-- weather_service.py
+|   |-- tests
+|   |   `-- test_chat.py
 |   `-- utils
 |       |-- __init__.py
 |       `-- logging_config.py
@@ -44,4 +47,4 @@
 |   `-- vite.config.js
 `-- tree.txt
 
-10 directories, 34 files
+11 directories, 36 files
