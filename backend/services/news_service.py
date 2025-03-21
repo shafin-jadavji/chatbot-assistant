@@ -78,7 +78,9 @@ class NewsService:
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error fetching news: {str(e)}")
             return {"error": f"Failed to fetch news: {str(e)}"}
-            
+        except Exception as e:
+            logger.error(f"Unexpected error fetching news: {str(e)}")
+            return {"error": f"An unexpected error occurred: {str(e)}"}            
     @staticmethod
     def format_news_response(news_data: Dict[str, Any]) -> str:
         """

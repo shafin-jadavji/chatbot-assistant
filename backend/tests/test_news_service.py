@@ -85,6 +85,23 @@ class TestNewsService:
         assert "error" in result
         assert "Connection error" in result["error"]
 
+    @patch('services.news_service.requests.get')
+    def test_get_top_headlines_generic_exception(self, mock_get):
+        """Test handling of generic exceptions"""
+        # Mock a successful response but make json() raise an exception
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.side_effect = ValueError("Invalid JSON")
+        mock_get.return_value = mock_response
+
+        # Call the method
+        result = NewsService.get_top_headlines()
+
+        # Assertions
+        assert "error" in result
+        assert "unexpected error" in result["error"].lower()
+        assert "Invalid JSON" in result["error"]
+
     def test_format_news_response_with_articles(self):
         """Test formatting news response with articles"""
         # Test data
