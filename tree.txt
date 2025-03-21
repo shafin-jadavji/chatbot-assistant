@@ -19,6 +19,7 @@
 |   |-- tests
 |   |   |-- test_app.py
 |   |   |-- test_chat.py
+|   |   |-- test_entity_service.py
 |   |   `-- test_intent_service.py
 |   `-- utils
 |       |-- __init__.py
@@ -49,4 +50,4 @@
 |   `-- vite.config.js
 `-- tree.txt
 
-11 directories, 38 files
+11 directories, 39 files
