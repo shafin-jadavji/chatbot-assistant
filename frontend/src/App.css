@@ -1,8 +1,17 @@
 #root {
-  max-width: 1280px;
+  max-width: 100%; /* This ensures it can use the full width of the viewport */
+  width: 100%; /* Explicitly set width to 100% */
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0.5rem; /* Reduced from 1rem for more space */
   text-align: center;
+}
+
+.App {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .logo {
