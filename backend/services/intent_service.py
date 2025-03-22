@@ -55,13 +55,21 @@ def detect_intent(user_message):
     logger.debug(f"Detecting intent for message: '{user_message}'")
     
     try:
-        prediction = intent_classifier(user_message)[0]
-        label = prediction["label"].lower()
-        score = prediction["score"]
-        logger.debug(f"Raw model prediction: {label} (score: {score:.4f})")
-        
         # Convert message to lowercase for case-insensitive matching
         message_lower = user_message.lower()
+        
+        # Check for simple weather phrases first
+        simple_weather_phrases = [
+            "what's the weather", "what is the weather", 
+            "how's the weather", "how is the weather",
+            "weather today", "current weather", "weather now",
+            "temperature today", "current temperature"
+        ]
+        
+        for phrase in simple_weather_phrases:
+            if phrase in message_lower:
+                logger.info(f"Detected intent 'weather' based on simple phrase '{phrase}'")
+                return "weather"
         
         # Special case for stock market indices
         if any(index in message_lower for index in ["nasdaq", "dow", "s&p"]):
@@ -80,7 +88,13 @@ def detect_intent(user_message):
                     logger.info(f"Detected intent '{intent}' based on keyword '{keyword}'")
                     return intent
         
-        # If no intent was matched, return "general"
+        # If no intent was matched, use the transformer model
+        prediction = intent_classifier(user_message)[0]
+        label = prediction["label"].lower()
+        score = prediction["score"]
+        logger.debug(f"Raw model prediction: {label} (score: {score:.4f})")
+        
+        # If still no clear intent, return "general"
         logger.info("No specific intent detected, defaulting to 'general'")
         return "general"
     
