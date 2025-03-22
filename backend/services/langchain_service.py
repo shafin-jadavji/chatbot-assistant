@@ -24,39 +24,54 @@ llm = ChatOpenAI(
 logger.info("Initialized LangChain OpenAI model")
 
 # Memory store for conversation context (this will be improved in future phases)
+from services.geolocation_service import get_location_from_ip
+
 conversation_history = []
 
-def handle_weather_request(entities, user_message):
+def handle_weather_request(entities, user_message, client_ip=None):
     """
     Handles weather-related queries by extracting location entities and temperature unit preference.
     
     Args:
         entities (dict): Extracted entities from the message
         user_message (str): The original user message
+        client_ip (str, optional): Client IP address for geolocation if no location provided
         
     Returns:
         str: Weather response
     """
     location = entities.get("GPE")
-    if location:
-        location_str = location[0] if location else "unknown location"
-        logger.info(f"Weather request for location: {location_str}")
+    
+    # If no location is provided, try to get it from the client's IP
+    if not location and client_ip:
+        logger.info(f"No location provided, attempting to use client IP: {client_ip}")
+        geo_data = get_location_from_ip(client_ip)
         
-        # Detect temperature unit preference (defaults to imperial/Fahrenheit if not specified)
-        unit_preference = detect_temperature_unit(user_message)
-        unit = unit_preference if unit_preference else "imperial"
-        
-        # Log the unit being used
-        unit_name = "Celsius" if unit == "metric" else "Fahrenheit"
-        logger.info(f"Using temperature unit: {unit_name}")
+        if geo_data and geo_data.get("city"):
+            location = [geo_data.get("city")]
+            logger.info(f"Using geolocation from IP: {location[0]}")
+        else:
+            logger.warning("Could not determine location from IP")
+            return "I need a location to fetch weather details. Please specify a city or region."
+    elif not location:
+        logger.warning("Weather request received but no location entity found and no IP provided")
+        return "I need a location to fetch weather details. Please specify a city or region."
+    
+    location_str = location[0] if location else "unknown location"
+    logger.info(f"Weather request for location: {location_str}")
+    
+    # Detect temperature unit preference (defaults to imperial/Fahrenheit if not specified)
+    unit_preference = detect_temperature_unit(user_message)
+    unit = unit_preference if unit_preference else "imperial"
+    
+    # Log the unit being used
+    unit_name = "Celsius" if unit == "metric" else "Fahrenheit"
+    logger.info(f"Using temperature unit: {unit_name}")
 
-        # Fetch weather data using the weather service with the specified unit
-        weather_response = get_weather(location_str, unit)
-        logger.info(f"Weather response: {weather_response}")
-        return weather_response
-    else:
-        logger.warning("Weather request received but no location entity found")
-        return "I need a location to fetch weather details."
+    # Fetch weather data using the weather service with the specified unit
+    weather_response = get_weather(location_str, unit)
+    logger.info(f"Weather response: {weather_response}")
+    return weather_response
 
 def handle_news_request(user_message):
     """
@@ -78,8 +93,6 @@ def handle_news_request(user_message):
     
     # Get news based on category and query
     news_response = get_news(category=category, query=query)
-    
-    return news_response
 
 def handle_stocks_request(entities):
     """
@@ -88,16 +101,20 @@ def handle_stocks_request(entities):
     logger.info("Stocks request received - functionality not yet implemented")
     return "I'll be able to provide stock information in a future update."
 
-def chat_with_memory(user_message):
+def chat_with_memory(user_message, client_ip=None):
     """
     Handles conversation with memory, integrates intent detection and entity extraction,
     and routes specific intents to appropriate handlers.
+    
+    Args:
+        user_message (str): The user's input message
+        client_ip (str, optional): Client IP address for geolocation
     """
     logger.debug(f"Processing user message: '{user_message}'")
     
     # Extract intent and entities
     intent = detect_intent(user_message)
-    entities = extract_entities(user_message, intent=intent)  # Pass the intent to extract_entities
+    entities = extract_entities(user_message, intent=intent)
 
     # Log extracted details
     logger.info(f"Detected intent: {intent}, Extracted entities: {entities}")
@@ -105,7 +122,7 @@ def chat_with_memory(user_message):
     # Intent-based routing to avoid unnecessary OpenAI calls
     if intent == "weather":
         logger.debug("Routing to weather handler")
-        return handle_weather_request(entities, user_message)
+        return handle_weather_request(entities, user_message, client_ip=client_ip)
     
     if intent == "news":
         logger.debug("Routing to news handler")
