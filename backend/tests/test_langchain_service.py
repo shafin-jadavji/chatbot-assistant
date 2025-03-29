@@ -34,17 +34,17 @@ class TestLangchainService:
         mock_extract_entities.return_value = {"GPE": ["New York"]}
         mock_weather_handler.return_value = "Weather in New York is sunny."
         
-        # Call the function
-        result = chat_with_memory("What's the weather in New York?")
+        # Call the function with client_ip parameter
+        result = chat_with_memory("What's the weather in New York?", client_ip="192.168.1.1")
         
         # Assertions
         mock_detect_intent.assert_called_once_with("What's the weather in New York?")
         mock_extract_entities.assert_called_once_with("What's the weather in New York?", intent="weather")
-        mock_weather_handler.assert_called_once_with({"GPE": ["New York"]}, "What's the weather in New York?")
+        mock_weather_handler.assert_called_once_with({"GPE": ["New York"]}, "What's the weather in New York?", client_ip="192.168.1.1")
         assert result == "Weather in New York is sunny."
         # Verify conversation history wasn't modified for intent-based routing
         assert len(conversation_history) == 0
-    
+
     @patch('services.langchain_service.detect_intent')
     @patch('services.langchain_service.handle_news_request')
     def test_chat_with_memory_news_intent(self, mock_news_handler, mock_detect_intent):
@@ -125,12 +125,51 @@ class TestLangchainService:
         entities = {"GPE": ["New York"]}
         user_message = "What's the weather in New York?"
         
-        # Call the function
-        result = handle_weather_request(entities, user_message)
+        # Call the function with client_ip parameter
+        result = handle_weather_request(entities, user_message, client_ip=None)
         
         # Assertions
         mock_get_weather.assert_called_once_with("New York", "imperial")
         assert result == "It's 72°F and sunny in New York."
+    
+    @patch('services.langchain_service.get_location_from_ip')
+    @patch('services.langchain_service.get_weather')
+    def test_handle_weather_request_with_ip_fallback(self, mock_get_weather, mock_get_location):
+        """Test handle_weather_request with IP fallback when no location is provided"""
+        # Setup mocks
+        mock_get_location.return_value = {"city": "Seattle", "country": "US"}
+        mock_get_weather.return_value = "It's 65°F and rainy in Seattle."
+        
+        # Test data
+        entities = {}  # No location provided
+        user_message = "What's the weather like?"
+        client_ip = "203.0.113.1"  # Example IP
+        
+        # Call the function with client_ip parameter
+        result = handle_weather_request(entities, user_message, client_ip=client_ip)
+        
+        # Assertions
+        mock_get_location.assert_called_once_with(client_ip)
+        mock_get_weather.assert_called_once_with("Seattle", "imperial")
+        assert result == "It's 65°F and rainy in Seattle."
+    
+    @patch('services.langchain_service.get_location_from_ip')
+    def test_handle_weather_request_with_failed_ip_lookup(self, mock_get_location):
+        """Test handle_weather_request when IP lookup fails"""
+        # Setup mock to return None (failed lookup)
+        mock_get_location.return_value = None
+        
+        # Test data
+        entities = {}  # No location provided
+        user_message = "What's the weather like?"
+        client_ip = "203.0.113.1"  # Example IP
+        
+        # Call the function with client_ip parameter
+        result = handle_weather_request(entities, user_message, client_ip=client_ip)
+        
+        # Assertions
+        mock_get_location.assert_called_once_with(client_ip)
+        assert result == "I need a location to fetch weather details. Please specify a city or region."
     
     @patch('services.langchain_service.detect_temperature_unit')
     @patch('services.langchain_service.get_weather')
@@ -144,8 +183,8 @@ class TestLangchainService:
         entities = {"GPE": ["London"]}
         user_message = "What's the weather in London in Celsius?"
         
-        # Call the function
-        result = handle_weather_request(entities, user_message)
+        # Call the function with client_ip parameter
+        result = handle_weather_request(entities, user_message, client_ip=None)
         
         # Assertions
         mock_detect_temp_unit.assert_called_once_with(user_message)
@@ -158,11 +197,11 @@ class TestLangchainService:
         entities = {}
         user_message = "What's the weather like?"
         
-        # Call the function
-        result = handle_weather_request(entities, user_message)
+        # Call the function with client_ip parameter
+        result = handle_weather_request(entities, user_message, client_ip=None)
         
         # Assertions
-        assert result == "I need a location to fetch weather details."
+        assert result == "I need a location to fetch weather details. Please specify a city or region."
     
     @patch('services.langchain_service.detect_news_category')
     @patch('services.langchain_service.extract_news_query')
