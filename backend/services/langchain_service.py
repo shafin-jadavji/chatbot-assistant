@@ -93,6 +93,9 @@ def handle_news_request(user_message):
     
     # Get news based on category and query
     news_response = get_news(category=category, query=query)
+    
+    # Return the news response
+    return news_response
 
 def handle_stocks_request(entities):
     """
