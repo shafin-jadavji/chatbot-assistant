@@ -132,10 +132,29 @@ class TestLangchainService:
         mock_get_weather.assert_called_once_with("New York", "imperial")
         assert result == "It's 72°F and sunny in New York."
     
+    @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', 'Phoenix')
+    @patch('services.langchain_service.get_weather')
+    def test_handle_weather_request_with_default_location(self, mock_get_weather):
+        """Test handle_weather_request using the default location when no location is provided"""
+        # Setup mock
+        mock_get_weather.return_value = "It's 85°F and sunny in Phoenix."
+        
+        # Test data
+        entities = {}  # No location provided
+        user_message = "What's the weather like?"
+        
+        # Call the function without client_ip
+        result = handle_weather_request(entities, user_message, client_ip=None)
+        
+        # Assertions
+        mock_get_weather.assert_called_once_with("Phoenix", "imperial")
+        assert result == "It's 85°F and sunny in Phoenix."
+    
+    @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', None)  # Simulate no default location
     @patch('services.langchain_service.get_location_from_ip')
     @patch('services.langchain_service.get_weather')
     def test_handle_weather_request_with_ip_fallback(self, mock_get_weather, mock_get_location):
-        """Test handle_weather_request with IP fallback when no location is provided"""
+        """Test handle_weather_request with IP fallback when no location or default is provided"""
         # Setup mocks
         mock_get_location.return_value = {"city": "Seattle", "country": "US"}
         mock_get_weather.return_value = "It's 65°F and rainy in Seattle."
@@ -153,9 +172,10 @@ class TestLangchainService:
         mock_get_weather.assert_called_once_with("Seattle", "imperial")
         assert result == "It's 65°F and rainy in Seattle."
     
+    @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', None)  # Simulate no default location
     @patch('services.langchain_service.get_location_from_ip')
     def test_handle_weather_request_with_failed_ip_lookup(self, mock_get_location):
-        """Test handle_weather_request when IP lookup fails"""
+        """Test handle_weather_request when IP lookup fails and no default location"""
         # Setup mock to return None (failed lookup)
         mock_get_location.return_value = None
         
@@ -169,6 +189,19 @@ class TestLangchainService:
         
         # Assertions
         mock_get_location.assert_called_once_with(client_ip)
+        assert result == "I need a location to fetch weather details. Please specify a city or region."
+    
+    @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', None)  # Simulate no default location
+    def test_handle_weather_request_without_location_or_ip(self):
+        """Test handle_weather_request without a location, default location, or IP"""
+        # Test data
+        entities = {}
+        user_message = "What's the weather like?"
+        
+        # Call the function without client_ip
+        result = handle_weather_request(entities, user_message, client_ip=None)
+        
+        # Assertions
         assert result == "I need a location to fetch weather details. Please specify a city or region."
     
     @patch('services.langchain_service.detect_temperature_unit')
@@ -190,18 +223,6 @@ class TestLangchainService:
         mock_detect_temp_unit.assert_called_once_with(user_message)
         mock_get_weather.assert_called_once_with("London", "metric")
         assert result == "It's 22°C and sunny in London."
-    
-    def test_handle_weather_request_without_location(self):
-        """Test handle_weather_request without a location"""
-        # Test data
-        entities = {}
-        user_message = "What's the weather like?"
-        
-        # Call the function with client_ip parameter
-        result = handle_weather_request(entities, user_message, client_ip=None)
-        
-        # Assertions
-        assert result == "I need a location to fetch weather details. Please specify a city or region."
     
     @patch('services.langchain_service.detect_news_category')
     @patch('services.langchain_service.extract_news_query')

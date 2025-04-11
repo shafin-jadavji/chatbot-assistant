@@ -8,6 +8,8 @@ from services.intent_service import detect_intent, detect_news_category, extract
 from services.entity_service import extract_entities
 from services.news_service import get_news
 from services.weather_service import get_weather
+from services.geolocation_service import get_location_from_ip
+from config import DEFAULT_WEATHER_LOCATION
 
 # Get logger for this module
 logger = get_logger(__name__)
@@ -24,8 +26,6 @@ llm = ChatOpenAI(
 logger.info("Initialized LangChain OpenAI model")
 
 # Memory store for conversation context (this will be improved in future phases)
-from services.geolocation_service import get_location_from_ip
-
 conversation_history = []
 
 def handle_weather_request(entities, user_message, client_ip=None):
@@ -42,20 +42,25 @@ def handle_weather_request(entities, user_message, client_ip=None):
     """
     location = entities.get("GPE")
     
-    # If no location is provided, try to get it from the client's IP
-    if not location and client_ip:
-        logger.info(f"No location provided, attempting to use client IP: {client_ip}")
-        geo_data = get_location_from_ip(client_ip)
-        
-        if geo_data and geo_data.get("city"):
-            location = [geo_data.get("city")]
-            logger.info(f"Using geolocation from IP: {location[0]}")
+    # If no location is provided, try to use the default location
+    if not location:
+        if DEFAULT_WEATHER_LOCATION:
+            location = [DEFAULT_WEATHER_LOCATION]
+            logger.info(f"No location provided, using default location: {DEFAULT_WEATHER_LOCATION}")
+        # If no default location, try to get it from the client's IP
+        elif client_ip:
+            logger.info(f"No location provided, attempting to use client IP: {client_ip}")
+            geo_data = get_location_from_ip(client_ip)
+            
+            if geo_data and geo_data.get("city"):
+                location = [geo_data.get("city")]
+                logger.info(f"Using geolocation from IP: {location[0]}")
+            else:
+                logger.warning("Could not determine location from IP")
+                return "I need a location to fetch weather details. Please specify a city or region."
         else:
-            logger.warning("Could not determine location from IP")
+            logger.warning("Weather request received but no location entity found, no default location set, and no IP provided")
             return "I need a location to fetch weather details. Please specify a city or region."
-    elif not location:
-        logger.warning("Weather request received but no location entity found and no IP provided")
-        return "I need a location to fetch weather details. Please specify a city or region."
     
     location_str = location[0] if location else "unknown location"
     logger.info(f"Weather request for location: {location_str}")
