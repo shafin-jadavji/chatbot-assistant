@@ -23,8 +23,8 @@ except Exception as e:
 
 # Known intents with expanded keywords
 INTENT_LABELS = {
-    "weather": ["weather", "temperature", "forecast", "rain", "sunny", "climate", "humidity"],
-    "news": ["news", "headlines", "latest", "update", "current events", "breaking", "article", "report"],
+    "weather": ["weather", "temperature", "forecast", "rain", "sunny", "humidity"],  # Removed "climate"
+    "news": ["news", "headlines", "latest", "update", "current events", "breaking", "article", "report", "show me"],
     "casual": ["joke", "who are you", "hello", "hi", "how are you", "your name"],
     "stocks": ["stock", "market", "investment", "share", "price", "ticker", "nasdaq", "dow", "s&p"]
 }
@@ -42,6 +42,8 @@ NEWS_CATEGORIES = {
 logger.debug(f"Configured intent labels: {INTENT_LABELS}")
 logger.debug(f"Configured news categories: {NEWS_CATEGORIES}")
 
+__all__ = ['detect_intent', 'detect_news_category', 'extract_news_query', 'detect_temperature_unit', 'detect_time_period']
+
 def detect_intent(user_message):
     """
     Uses transformer model to classify user intent.
@@ -57,6 +59,11 @@ def detect_intent(user_message):
     try:
         # Convert message to lowercase for case-insensitive matching
         message_lower = user_message.lower()
+        
+        # Check for news intent first if "news" is in the message
+        if "news" in message_lower or "show me" in message_lower:
+            logger.info(f"Detected intent 'news' based on keyword 'news' or phrase 'show me'")
+            return "news"
         
         # Check for simple weather phrases first
         simple_weather_phrases = [
@@ -181,6 +188,46 @@ def detect_temperature_unit(user_message):
     logger.debug("No specific temperature unit detected in message")
     return None
 
+def detect_time_period(user_message):
+    """
+    Detects time period references in the user message for weather forecasts.
+    
+    Args:
+        user_message (str): The user's input message
+        
+    Returns:
+        tuple: (time_period, entity_type) where entity_type is "DATE" or "TIME"
+    """
+    message_lower = user_message.lower()
+    
+    # Define time periods with their variations and target entity type
+    time_period_mapping = {
+        "week": {"variations": ["week", "the week", "this week", "next week", "forecast"], "type": "TIME"},
+        "5 day": {"variations": ["5 day", "5-day", "five day", "five-day"], "type": "TIME"},
+        "next 5 days": {"variations": ["next 5 days", "next five days"], "type": "TIME"},
+        "today": {"variations": ["today", "this day"], "type": "DATE"},
+        "later today": {"variations": ["later today", "this evening", "tonight"], "type": "DATE"},
+        "tomorrow": {"variations": ["tomorrow"], "type": "DATE"},
+        "monday": {"variations": ["monday"], "type": "DATE"},
+        "tuesday": {"variations": ["tuesday"], "type": "DATE"},
+        "wednesday": {"variations": ["wednesday"], "type": "DATE"},
+        "thursday": {"variations": ["thursday"], "type": "DATE"},
+        "friday": {"variations": ["friday"], "type": "DATE"},
+        "saturday": {"variations": ["saturday"], "type": "DATE"},
+        "sunday": {"variations": ["sunday"], "type": "DATE"},
+        "now": {"variations": ["now", "current", "currently", "at the moment"], "type": "TIME"}
+    }
+    
+    # Check for each time period and its variations
+    for base_period, config in time_period_mapping.items():
+        for variation in config["variations"]:
+            if variation in message_lower:
+                logger.info(f"Detected time period: {base_period} (type: {config['type']})")
+                return base_period, config["type"]
+                
+    logger.debug("No specific time period detected in message")
+    return None, None
+
 # --- TEST FUNCTION ---
 def test_intent_detection():
     logger.info("Starting intent detection test")
@@ -208,7 +255,28 @@ def test_intent_detection():
     
     logger.info("Intent detection test completed")
 
+def test_time_period_detection():
+    logger.info("Starting time period detection test")
+    test_messages = [
+        "What's the weather now?",  # Should detect "now"
+        "What's the weather today?",  # Should detect "today"
+        "What's the weather later today?",  # Should detect "later today"
+        "What's the weather tomorrow?",  # Should detect "tomorrow"
+        "What's the weather for the week?",  # Should detect "week"
+        "What's the weather on Monday?",  # Should detect "monday"
+        "What's the weather forecast?",  # Should detect "week"
+        "What's the weather going to be like?",  # Should detect None
+    ]
+
+    for i, message in enumerate(test_messages):
+        logger.info(f"Test {i+1}/{len(test_messages)}: Processing '{message}'")
+        time_period = detect_time_period(message)
+        logger.info(f"Message: '{message}' -> Time Period: '{time_period}'")
+    
+    logger.info("Time period detection test completed")
+
 if __name__ == "__main__":
     from utils.logging_config import setup_logging
     setup_logging(logging.DEBUG)
     test_intent_detection()
+    test_time_period_detection()

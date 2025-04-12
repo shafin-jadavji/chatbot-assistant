@@ -20,7 +20,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to load spaCy model: {str(e)}")
     raise
-
 # Common city names that might be misclassified as PERSON
 COMMON_CITY_NAMES = [
     "mesa", "chandler", "gilbert", "tempe", "scottsdale", "glendale", 
@@ -96,6 +95,9 @@ def extract_entities(user_message, intent=None):
                                 logger.info(f"Found potential city '{city}' in message text")
                                 entities["GPE"].append(city.title())  # Add with proper capitalization
                                 break
+        
+        # For weather intent, use the centralized time period detection
+        # This will be handled in langchain_service.py to avoid circular imports
     
     logger.info(f"Extracted {sum(len(v) for v in entities.values())} entities from message")
     logger.debug(f"Extracted entities: {entities}")
@@ -116,6 +118,9 @@ def test_entity_extraction():
         "What's the weather in Chandler?",  # Should detect Chandler as GPE
         "Tell me about John Smith",  # Should keep John Smith as PERSON
         "What's the weather in Gilbert today?",  # Should detect Gilbert as GPE and today as DATE
+        "What's the weather tomorrow in Phoenix?",  # Should detect Phoenix as GPE and tomorrow as DATE
+        "What's the weather for the week in Seattle?",  # Should detect Seattle as GPE and week as TIME
+        "What's the weather on Monday in Chicago?",  # Should detect Chicago as GPE and Monday as DATE
     ]
 
     # Test with different intents
@@ -129,7 +134,10 @@ def test_entity_extraction():
         "Barack Obama was the 44th President of the United States.": "general",
         "I have a meeting on Monday at 3 PM.": "general",
         "Google is one of the biggest tech companies.": "general",
-        "Is Phoenix a city in Arizona?": "general"
+        "Is Phoenix a city in Arizona?": "general",
+        "What's the weather tomorrow in Phoenix?": "weather",
+        "What's the weather for the week in Seattle?": "weather",
+        "What's the weather on Monday in Chicago?": "weather",
     }
 
     for i, message in enumerate(test_messages):

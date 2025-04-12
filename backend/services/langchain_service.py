@@ -1,4 +1,10 @@
 import os
+import sys
+
+# Add the project root directory to Python path when running directly
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
@@ -73,8 +79,35 @@ def handle_weather_request(entities, user_message, client_ip=None):
     unit_name = "Celsius" if unit == "metric" else "Fahrenheit"
     logger.info(f"Using temperature unit: {unit_name}")
 
-    # Fetch weather data using the weather service with the specified unit
-    weather_response = get_weather(location_str, unit)
+    # Detect time period from entities or from the message directly
+    time_period = None
+    
+    # First check DATE entities
+    if entities.get("DATE"):
+        date_entity = entities["DATE"][0].lower()
+        # Normalize date entities
+        if "week" in date_entity:
+            time_period = "week"
+        elif "today" in date_entity:
+            time_period = "today" if "later" not in date_entity else "later today"
+        elif "tomorrow" in date_entity:
+            time_period = "tomorrow"
+        else:
+            time_period = date_entity
+        logger.info(f"Using time period from DATE entity: {time_period}")
+    # Then check TIME entities
+    elif entities.get("TIME"):
+        time_period = entities["TIME"][0].lower()
+        logger.info(f"Using time period from TIME entity: {time_period}")
+    # Finally, try to detect from the message
+    else:
+        from services.intent_service import detect_time_period
+        time_period, _ = detect_time_period(user_message)
+        if time_period:
+            logger.info(f"Using time period detected from message: {time_period}")
+    
+    # Fetch weather data using the weather service with the specified unit and time period
+    weather_response = get_weather(location_str, unit, time_period)
     logger.info(f"Weather response: {weather_response}")
     return weather_response
 
@@ -153,3 +186,89 @@ def chat_with_memory(user_message, client_ip=None):
     logger.debug("Added AI response to conversation history")
 
     return response.content
+
+def test_weather_handling():
+    """
+    Functional test for weather handling functionality.
+    This can be run directly without starting the full service.
+    """
+    logger.info("Starting weather handling test")
+    
+    test_cases = [
+        {"message": "What's the weather in Phoenix?", "expected_intent": "weather", "expected_location": "Phoenix"},
+        {"message": "What's the weather in New York tomorrow?", "expected_intent": "weather", "expected_location": "New York", "expected_time": "tomorrow"},
+        {"message": "What's the weather for the week in Seattle?", "expected_intent": "weather", "expected_location": "Seattle", "expected_time": "week"},
+        {"message": "What's the weather on Monday in Chicago?", "expected_intent": "weather", "expected_location": "Chicago", "expected_time": "monday"},
+        {"message": "What's the temperature in London in Celsius?", "expected_intent": "weather", "expected_location": "London", "expected_unit": "metric"},
+    ]
+    
+    for i, test in enumerate(test_cases):
+        logger.info(f"Test {i+1}/{len(test_cases)}: {test['message']}")
+        
+        # Test intent detection
+        intent = detect_intent(test["message"])
+        assert intent == test["expected_intent"], f"Expected intent {test['expected_intent']}, got {intent}"
+        
+        # Test entity extraction
+        entities = extract_entities(test["message"], intent=intent)
+        
+        # Check location
+        if "expected_location" in test:
+            locations = entities.get("GPE", [])
+            assert any(test["expected_location"] in loc for loc in locations), f"Expected location {test['expected_location']} not found in {locations}"
+        
+        # Test weather handling
+        response = handle_weather_request(entities, test["message"])
+        logger.info(f"Response: {response}")
+        
+        # Basic validation of response
+        assert response and len(response) > 20, "Response too short or empty"
+        
+        if "expected_location" in test:
+            assert test["expected_location"] in response, f"Response doesn't contain expected location {test['expected_location']}"
+    
+    logger.info("All weather handling tests passed!")
+
+def test_news_handling():
+    """
+    Functional test for news handling functionality.
+    """
+    logger.info("Starting news handling test")
+    
+    test_cases = [
+        {"message": "What's the latest news?", "expected_intent": "news"},
+        {"message": "Tell me about technology news", "expected_intent": "news", "expected_category": "technology"},
+        {"message": "Show me news about climate change", "expected_intent": "news", "expected_query": "climate change"},
+    ]
+    
+    for i, test in enumerate(test_cases):
+        logger.info(f"Test {i+1}/{len(test_cases)}: {test['message']}")
+        
+        # Test intent detection
+        intent = detect_intent(test["message"])
+        assert intent == test["expected_intent"], f"Expected intent {test['expected_intent']}, got {intent}"
+        
+        # Test news handling
+        response = handle_news_request(test["message"])
+        logger.info(f"Response: {response}")
+        
+        # Basic validation of response
+        assert response and len(response) > 20, "Response too short or empty"
+    
+    logger.info("All news handling tests passed!")
+
+if __name__ == "__main__":
+    # This allows running tests directly by executing this file
+    import logging
+    from utils.logging_config import setup_logging
+    
+    # Set up logging with higher level for testing
+    setup_logging(logging.INFO)
+    
+    # Run the tests
+    try:
+        test_weather_handling()
+        test_news_handling()
+        logger.info("All functional tests passed!")
+    except AssertionError as e:
+        logger.error(f"Test failed: {str(e)}")
