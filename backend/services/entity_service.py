@@ -66,7 +66,7 @@ def extract_entities(user_message, intent=None):
             entities[ent.label_].append(ent.text)  # Store all occurrences
             logger.debug(f"Found entity: {ent.text} ({ent.label_})")
     
-    # For weather intent, check for city names in PERSON entities or in the message text
+    # For weather intent, perform additional entity extraction
     if intent == "weather":
         # Check if we have any PERSON entities that might actually be cities
         person_entities = entities["PERSON"].copy()  # Create a copy to avoid modification during iteration
@@ -96,8 +96,17 @@ def extract_entities(user_message, intent=None):
                                 entities["GPE"].append(city.title())  # Add with proper capitalization
                                 break
         
-        # For weather intent, use the centralized time period detection
-        # This will be handled in langchain_service.py to avoid circular imports
+        # Simple time period detection for common phrases
+        message_lower = user_message.lower()
+        
+        # Check for "later today" specifically
+        if "later today" in message_lower or "this evening" in message_lower or "tonight" in message_lower:
+            logger.info(f"Found time period 'later today' in message text")
+            entities["DATE"].append("later today")
+        # Check for "today" if not already detected
+        elif "today" in message_lower and not any("today" in date.lower() for date in entities.get("DATE", [])):
+            logger.info(f"Found time period 'today' in message text")
+            entities["DATE"].append("today")
     
     logger.info(f"Extracted {sum(len(v) for v in entities.values())} entities from message")
     logger.debug(f"Extracted entities: {entities}")

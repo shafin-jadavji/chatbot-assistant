@@ -46,6 +46,30 @@ class TestLangchainService:
         assert len(conversation_history) == 0
 
     @patch('services.langchain_service.detect_intent')
+    @patch('services.langchain_service.extract_entities')
+    @patch('services.langchain_service.handle_weather_request')
+    def test_chat_with_memory_weather_intent_with_time_period(self, mock_weather_handler, mock_extract_entities, mock_detect_intent):
+        """Test chat_with_memory with weather intent including time period"""
+        # Setup mocks
+        mock_detect_intent.return_value = "weather"
+        mock_extract_entities.return_value = {"GPE": ["New York"], "DATE": ["tomorrow"]}
+        mock_weather_handler.return_value = "Weather in New York tomorrow will be sunny."
+        
+        # Call the function
+        result = chat_with_memory("What's the weather in New York tomorrow?")
+        
+        # Assertions
+        mock_detect_intent.assert_called_once_with("What's the weather in New York tomorrow?")
+        mock_extract_entities.assert_called_once_with("What's the weather in New York tomorrow?", intent="weather")
+        mock_weather_handler.assert_called_once_with(
+            {"GPE": ["New York"], "DATE": ["tomorrow"]}, 
+            "What's the weather in New York tomorrow?", 
+            client_ip=None
+        )
+        assert result == "Weather in New York tomorrow will be sunny."
+        assert len(conversation_history) == 0
+
+    @patch('services.langchain_service.detect_intent')
     @patch('services.langchain_service.handle_news_request')
     def test_chat_with_memory_news_intent(self, mock_news_handler, mock_detect_intent):
         """Test chat_with_memory with news intent"""
@@ -129,7 +153,7 @@ class TestLangchainService:
         result = handle_weather_request(entities, user_message, client_ip=None)
         
         # Assertions
-        mock_get_weather.assert_called_once_with("New York", "imperial")
+        mock_get_weather.assert_called_once_with("New York", "imperial", None)
         assert result == "It's 72°F and sunny in New York."
     
     @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', 'Phoenix')
@@ -147,7 +171,7 @@ class TestLangchainService:
         result = handle_weather_request(entities, user_message, client_ip=None)
         
         # Assertions
-        mock_get_weather.assert_called_once_with("Phoenix", "imperial")
+        mock_get_weather.assert_called_once_with("Phoenix", "imperial", None)
         assert result == "It's 85°F and sunny in Phoenix."
     
     @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', None)  # Simulate no default location
@@ -169,7 +193,7 @@ class TestLangchainService:
         
         # Assertions
         mock_get_location.assert_called_once_with(client_ip)
-        mock_get_weather.assert_called_once_with("Seattle", "imperial")
+        mock_get_weather.assert_called_once_with("Seattle", "imperial", None)
         assert result == "It's 65°F and rainy in Seattle."
     
     @patch('services.langchain_service.DEFAULT_WEATHER_LOCATION', None)  # Simulate no default location
@@ -221,7 +245,7 @@ class TestLangchainService:
         
         # Assertions
         mock_detect_temp_unit.assert_called_once_with(user_message)
-        mock_get_weather.assert_called_once_with("London", "metric")
+        mock_get_weather.assert_called_once_with("London", "metric", None)
         assert result == "It's 22°C and sunny in London."
     
     @patch('services.langchain_service.detect_news_category')

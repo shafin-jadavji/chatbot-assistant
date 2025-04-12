@@ -60,12 +60,17 @@ def detect_intent(user_message):
         # Convert message to lowercase for case-insensitive matching
         message_lower = user_message.lower()
         
-        # Check for news intent first if "news" is in the message
-        if "news" in message_lower or "show me" in message_lower:
-            logger.info(f"Detected intent 'news' based on keyword 'news' or phrase 'show me'")
+        # Special case for stock market indices - check this first
+        if any(index in message_lower for index in ["nasdaq", "dow", "s&p"]):
+            logger.info(f"Detected intent 'stocks' based on market index keywords")
+            return "stocks"
+        
+        # Check for news intent if "news" is in the message
+        if "news" in message_lower:
+            logger.info(f"Detected intent 'news' based on keyword 'news'")
             return "news"
         
-        # Check for simple weather phrases first
+        # Check for simple weather phrases
         simple_weather_phrases = [
             "what's the weather", "what is the weather", 
             "how's the weather", "how is the weather",
@@ -77,11 +82,6 @@ def detect_intent(user_message):
             if phrase in message_lower:
                 logger.info(f"Detected intent 'weather' based on simple phrase '{phrase}'")
                 return "weather"
-        
-        # Special case for stock market indices
-        if any(index in message_lower for index in ["nasdaq", "dow", "s&p"]):
-            logger.info(f"Detected intent 'stocks' based on market index keywords")
-            return "stocks"
         
         # Check for intent keywords in the message
         for intent, keywords in INTENT_LABELS.items():
@@ -217,6 +217,21 @@ def detect_time_period(user_message):
         "sunday": {"variations": ["sunday"], "type": "DATE"},
         "now": {"variations": ["now", "current", "currently", "at the moment"], "type": "TIME"}
     }
+    
+    # Check for "later today" first (specific check before general "today")
+    if "later today" in message_lower or "this evening" in message_lower or "tonight" in message_lower:
+        logger.info(f"Detected time period: later today (type: DATE)")
+        return "later today", "DATE"
+    
+    # Check for 5-day forecast specifically
+    if "5-day forecast" in message_lower or "5 day forecast" in message_lower or "five day forecast" in message_lower or "five-day forecast" in message_lower:
+        logger.info(f"Detected time period: 5 day (type: TIME)")
+        return "5 day", "TIME"
+    
+    # Special case for "forecast" without qualifiers - map to "week"
+    if "forecast" in message_lower and not any(period in message_lower for period in ["5-day", "5 day", "five day", "five-day"]):
+        logger.info(f"Detected generic forecast, mapping to week (type: TIME)")
+        return "week", "TIME"
     
     # Check for each time period and its variations
     for base_period, config in time_period_mapping.items():

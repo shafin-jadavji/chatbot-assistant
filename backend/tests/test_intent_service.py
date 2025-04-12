@@ -169,6 +169,74 @@ class TestIntentService(unittest.TestCase):
         for category, keywords in NEWS_CATEGORIES.items():
             self.assertTrue(len(keywords) > 0, f"News category {category} has no keywords")
 
+    def test_detect_time_period(self):
+        """Test the detect_time_period function"""
+        from services.intent_service import detect_time_period
+        
+        # Test today
+        period, entity_type = detect_time_period("What's the weather today?")
+        assert period == "today"
+        assert entity_type == "DATE"
+        
+        # Test tomorrow
+        period, entity_type = detect_time_period("What's the weather tomorrow?")
+        assert period == "tomorrow"
+        assert entity_type == "DATE"
+        
+        # Test week
+        period, entity_type = detect_time_period("What's the weather for the week?")
+        assert period == "week"
+        assert entity_type == "TIME"
+        
+        # Test specific day
+        period, entity_type = detect_time_period("What's the weather on Monday?")
+        assert period == "monday"
+        assert entity_type == "DATE"
+        
+        # Test later today
+        period, entity_type = detect_time_period("What's the weather later today?")
+        assert period == "later today"
+        assert entity_type == "DATE"
+        
+        # Test 5-day forecast
+        period, entity_type = detect_time_period("What's the 5-day forecast?")
+        assert period == "5 day"
+        assert entity_type == "TIME"
+        
+        # Test no time period
+        period, entity_type = detect_time_period("What's the weather in New York?")
+        assert period is None
+        assert entity_type is None
+
+    def test_detect_time_period_with_variations(self):
+        """Test detect_time_period with different phrase variations"""
+        from services.intent_service import detect_time_period
+        
+        # Test variations of "today"
+        assert detect_time_period("What's the weather this day?")[0] == "today"
+        
+        # Test variations of "later today"
+        assert detect_time_period("What's the weather tonight?")[0] == "later today"
+        assert detect_time_period("What's the weather this evening?")[0] == "later today"
+        
+        # Test variations of "week"
+        assert detect_time_period("What's the weather this week?")[0] == "week"
+        assert detect_time_period("What's the weather next week?")[0] == "week"
+        assert detect_time_period("What's the weather forecast?")[0] == "week"
+        
+        # Test variations of "now"
+        assert detect_time_period("What's the weather now?")[0] == "now"
+        assert detect_time_period("What's the current weather?")[0] == "now"
+        assert detect_time_period("What's the weather at the moment?")[0] == "now"
+
+    def test_news_intent_with_climate_keyword(self):
+        """Test that 'climate change' in news context is detected as news intent"""
+        result = detect_intent("Show me news about climate change")
+        self.assertEqual(result, "news")
+        
+        result = detect_intent("What's the latest news on climate change?")
+        self.assertEqual(result, "news")
+
 
 if __name__ == "__main__":
     unittest.main()

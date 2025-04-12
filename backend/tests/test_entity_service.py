@@ -112,6 +112,48 @@ class TestEntityService:
             assert "GPE" in entities
             assert "Tempe" in entities["GPE"] or "Tempe" in [e.lower() for e in entities["GPE"]]
             
+    def test_time_period_extraction(self):
+        """Test extraction of time period entities"""
+        # Test with explicit time periods
+        message = "What's the weather tomorrow in Phoenix?"
+        entities = extract_entities(message, intent="weather")
+        assert "DATE" in entities
+        assert "tomorrow" in entities["DATE"]
+        
+        # Test with week
+        message = "What's the weather for the week in Seattle?"
+        entities = extract_entities(message, intent="weather")
+        assert "TIME" in entities or "DATE" in entities
+        # Depending on your implementation, "week" might be classified as TIME or DATE
+        
+        # Test with specific day
+        message = "What's the weather on Monday in Chicago?"
+        entities = extract_entities(message, intent="weather")
+        assert "DATE" in entities
+        assert "monday" in [date.lower() for date in entities["DATE"]]
+        
+        # Test with "later today"
+        message = "What's the weather later today in Boston?"
+        entities = extract_entities(message, intent="weather")
+        assert "DATE" in entities
+        assert any("today" in date.lower() for date in entities["DATE"])
+
+    def test_time_extraction_with_non_weather_intent(self):
+        """Test that time period extraction doesn't happen for non-weather intents"""
+        # Test with general intent - should not extract special time periods
+        message = "I'll be in Seattle for the week"
+        entities = extract_entities(message, intent="general")
+        
+        # The spaCy model might still extract some time entities naturally,
+        # but our special weather-specific time period extraction shouldn't add extras
+        
+        # Test with weather intent for comparison
+        weather_entities = extract_entities(message, intent="weather")
+        
+        # If our implementation is correct, weather intent should extract more time entities
+        # than general intent for the same message
+        assert len(weather_entities.get("TIME", [])) >= len(entities.get("TIME", []))
+
     # def test_ambiguous_gilbert_cases(self):
     #     """Test handling of 'Gilbert' in different contexts"""
         

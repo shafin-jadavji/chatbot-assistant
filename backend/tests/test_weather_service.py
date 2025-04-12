@@ -3,6 +3,7 @@ import os
 import sys
 from unittest.mock import patch, MagicMock
 import requests
+from datetime import datetime, timedelta
 
 # Add the parent directory to the path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -23,7 +24,11 @@ class TestWeatherService:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "weather": [{"description": "clear sky"}],
-            "main": {"temp": 72.5}
+            "main": {
+                "temp": 72.5,
+                "feels_like": 70.2,
+                "humidity": 65
+            }
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
@@ -51,7 +56,11 @@ class TestWeatherService:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "weather": [{"description": "cloudy"}],
-            "main": {"temp": 22.5}
+            "main": {
+                "temp": 22.5,
+                "feels_like": 21.0,
+                "humidity": 70
+            }
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
@@ -75,7 +84,11 @@ class TestWeatherService:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "weather": [{"description": "rainy"}],
-            "main": {"temp": 65.3}
+            "main": {
+                "temp": 65.3,
+                "feels_like": 63.0,
+                "humidity": 80
+            }
         }
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
@@ -165,3 +178,155 @@ class TestWeatherService:
         # Assertions
         assert "Weather API key is missing" in result
         assert "Please configure it" in result
+
+    @patch('services.weather_service.requests.get')
+    def test_get_weather_with_time_period(self, mock_get):
+        """Test weather API call with time period parameter"""
+        # Mock the API response for forecast
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "list": [
+                {
+                    "dt": int((datetime.now() + timedelta(days=1)).timestamp()),
+                    "main": {"temp": 72.5},
+                    "weather": [{"main": "Clear", "description": "clear sky"}]
+                },
+                {
+                    "dt": int((datetime.now() + timedelta(days=1, hours=6)).timestamp()),
+                    "main": {"temp": 75.2},
+                    "weather": [{"main": "Clear", "description": "clear sky"}]
+                }
+            ],
+            "city": {"name": "New York"}
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        # Call the function with tomorrow as time period
+        result = get_weather("New York", "imperial", "tomorrow")
+
+        # Assertions
+        assert "New York" in result
+        assert "Tomorrow" in result or "tomorrow" in result
+        assert "forecast" in result.lower()
+        
+        # Verify the API was called with correct parameters
+        args, kwargs = mock_get.call_args
+        assert "api.openweathermap.org/data/2.5/forecast" in args[0]
+        assert "New York" in args[0]
+        assert "imperial" in args[0]
+
+    @patch('services.weather_service.requests.get')
+    def test_get_weather_with_week_time_period(self, mock_get):
+        """Test weather API call with week time period"""
+        # Mock the API response for 5-day forecast
+        mock_response = MagicMock()
+        
+        # Create forecast data for 5 days
+        forecast_list = []
+        for i in range(5):
+            forecast_list.append({
+                "dt": int((datetime.now() + timedelta(days=i)).timestamp()),
+                "main": {"temp": 70 + i},
+                "weather": [{"main": "Clear", "description": "clear sky"}]
+            })
+        
+        mock_response.json.return_value = {
+            "list": forecast_list,
+            "city": {"name": "Seattle"}
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        # Call the function with week as time period
+        result = get_weather("Seattle", "imperial", "week")
+
+        # Assertions
+        assert "Seattle" in result
+        assert "5-day forecast" in result
+        assert "Monday" in result or "Tuesday" in result or "Wednesday" in result  # At least one day name
+        
+        # Verify the API was called with correct parameters
+        args, kwargs = mock_get.call_args
+        assert "api.openweathermap.org/data/2.5/forecast" in args[0]
+        assert "Seattle" in args[0]
+
+    @patch('services.weather_service.requests.get')
+    def test_get_weather_with_specific_day(self, mock_get):
+        """Test weather API call with specific day of week"""
+        # Mock the API response for specific day forecast
+        mock_response = MagicMock()
+        
+        # Get the target day (next Monday)
+        today = datetime.now()
+        days_until_monday = (7 - today.weekday()) % 7
+        if days_until_monday == 0:
+            days_until_monday = 7  # Next Monday, not today
+        target_day = today + timedelta(days=days_until_monday)
+        
+        # Create forecast data for that day
+        forecast_list = []
+        for hour in [9, 12, 18]:  # Morning, afternoon, evening
+            forecast_list.append({
+                "dt": int((target_day.replace(hour=hour)).timestamp()),
+                "main": {"temp": 60 + hour//3},
+                "weather": [{"main": "Clouds" if hour < 12 else "Clear", "description": "cloudy" if hour < 12 else "clear sky"}]
+            })
+        
+        mock_response.json.return_value = {
+            "list": forecast_list,
+            "city": {"name": "Chicago"}
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        # Call the function with monday as time period
+        result = get_weather("Chicago", "imperial", "monday")
+
+        # Assertions
+        assert "Chicago" in result
+        assert "Monday" in result or "monday" in result
+        assert "Morning" in result or "Afternoon" in result or "Evening" in result
+        
+        # Verify the API was called with correct parameters
+        args, kwargs = mock_get.call_args
+        assert "api.openweathermap.org/data/2.5/forecast" in args[0]
+        assert "Chicago" in args[0]
+
+    @patch('services.weather_service.requests.get')
+    def test_parse_forecast_data_with_different_time_periods(self, mock_get):
+        """Test the parse_forecast_data function with different time periods"""
+        from services.weather_service import parse_forecast_data
+        
+        # Create test forecast data
+        now = datetime.now()
+        forecast_list = []
+        
+        # Add data for today
+        for hour in [9, 15, 21]:
+            forecast_list.append({
+                "dt": int(now.replace(hour=hour).timestamp()),
+                "main": {"temp": 60 + hour//3},
+                "weather": [{"main": "Clear", "description": "clear sky"}]
+            })
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "list": forecast_list,
+            "city": {"name": "Chicago"}
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        # Call the function with today as time period
+        result = get_weather("Chicago", "imperial", "today")
+
+        # Assertions
+        assert "Chicago" in result
+        assert "Today" in result or "today" in result
+        assert "Morning" in result or "Afternoon" in result or "Evening" in result
+        
+        # Verify the API was called with correct parameters
+        args, kwargs = mock_get.call_args
+        assert "api.openweathermap.org/data/2.5/forecast" in args[0]
+        assert "Chicago" in args[0]
